@@ -1,0 +1,63 @@
+# https://docs.aws.amazon.com/ko_kr/opensearch-service/latest/developerguide/knn.html
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: opensearch
+  namespace: opensearch
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: opensearch
+  template:
+    metadata:
+      labels:
+        app: opensearch
+    spec:
+      initContainers:
+      - name: install-plugins
+        image: opensearchproject/opensearch:2.13.0
+        securityContext:
+          runAsUser: 0
+        command:
+          - /bin/sh
+          - -c
+          - |
+            # 플러그인 zip 파일을 다운로드
+            curl -L -o /tmp/opensearch-knn-2.13.0.0.zip https://ci.opensearch.org/ci/dbc/distribution-build-opensearch/2.13.0/9662/linux/x64/tar/builds/opensearch/plugins/opensearch-knn-2.13.0.0.zip
+            # 플러그인을 설치
+            /usr/share/opensearch/bin/opensearch-plugin install --batch file:///tmp/opensearch-knn-2.13.0.0.zip
+            # 플러그인 디렉토리의 권한 설정
+            chown -R 1000:1000 /usr/share/opensearch/plugins
+        volumeMounts:
+        - name: plugins
+          mountPath: /usr/share/opensearch/plugins
+      containers:
+      - name: opensearch
+        image: opensearchproject/opensearch:2.13.0
+        env:
+        - name: discovery.type
+          value: single-node
+        - name: OPENSEARCH_JAVA_OPTS
+          value: "-Xmx2G -Xms2G"
+        - name: OPENSEARCH_INITIAL_ADMIN_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: opensearch-admin-secret
+              key: password
+        ports:
+        - containerPort: 9200
+          name: http
+        - containerPort: 9600
+          name: transport
+        volumeMounts:
+        - name: plugins
+          mountPath: /usr/share/opensearch/plugins
+        - name: opensearch-storage
+          mountPath: /usr/share/opensearch/data
+      volumes:
+      - name: opensearch-storage
+        persistentVolumeClaim:
+          claimName: pvc-opensearch   # pvc 구성
+      - name: plugins
+        emptyDir: {}   # 플러그인 설치 용도 
