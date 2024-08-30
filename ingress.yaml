@@ -1,0 +1,28 @@
+# secret tls 먼저 생성
+# kubectl create secret tls tls-opensearch --key tls.key --cert tls.chain.crt -n opensearch
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ingress-opensearch
+  namespace: opensearch
+  annotations:
+    # nginx.ingress.kubernetes.io/ssl-passthrough: "true"
+    # nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: opensearch-dev.com    # 수정 필요 
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: opensearch
+            port:
+              number: 30004
+  tls:
+  - hosts:
+    - opensearch-dev.com      # 수정 필요 
+    secretName: tls-opensearch
