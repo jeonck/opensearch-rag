@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: opensearch
+  namespace: opensearch
+spec:
+  ports:
+  - port: 30004
+    targetPort: 9200
+    protocol: TCP
+    name: http
+  - port: 31004
+    targetPort: 9600
+    protocol: TCP
+    name: transport
+  selector:
+    app: opensearch
+  type: ClusterIP
